@@ -1,0 +1,4 @@
+# Python deps for the standalone audit / crypto utilities (audit/*.py).
+# The TypeScript deployment scripts use package.json; this file is only
+# for the legacy audit hash-chain + Ed25519 sign/verify utilities.
+cryptography>=42.0

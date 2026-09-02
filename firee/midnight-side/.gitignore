@@ -1,0 +1,7 @@
+node_modules/
+build/
+seed.txt
+*.pem
+audit/audit_log.jsonl
+audit/audit_chain.jsonl
+audit/root_hash.txt
