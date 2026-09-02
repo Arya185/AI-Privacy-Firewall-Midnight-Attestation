@@ -222,7 +222,7 @@ flowchart LR
 
 ---
 
-## 🔥 Midnight / Hackathon Relevance
+## 🔥 Midnight 
 
 Built around **Midnight's selective-disclosure model** — commit a value on-chain while its inputs stay private.
 
@@ -479,4 +479,4 @@ Not yet implemented:
 
 ## 📄 License
 
-Intended: **MIT.** A `LICENSE` file has not yet been committed — add one before public release.
+Project is MIT licensed. See [LICENSE](LICENSE).
