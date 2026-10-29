@@ -2,9 +2,9 @@
 
 ``midnight/policy_attestation.compact`` exposes:
 
-    ledger  attested: Map<Opaque<"Bytes32">, Boolean>
-    circuit recordAttestation(decisionHash: Opaque<"Bytes32">): []
-    circuit isAttested(decisionHash: Opaque<"Bytes32">): Boolean
+    ledger  attested: Map<Bytes<32>, Boolean>
+    circuit recordAttestation(decisionHash: Bytes<32>): []
+    circuit isAttested(decisionHash: Bytes<32>): Boolean
 
 so the only thing that ever goes on-chain is a 32-byte hash of a policy
 decision. This module turns a :class:`SecurityDecision` (or an
@@ -180,7 +180,7 @@ def parse_contract_interface(path: str | Path = CONTRACT_PATH) -> dict[str, Any]
     text = Path(path).read_text()
     circuits = re.findall(r"export\s+circuit\s+(\w+)", text)
     ledgers = re.findall(r"export\s+ledger\s+(\w+)", text)
-    key_type = "Bytes32" if 'Opaque<"Bytes32">' in text else None
+    key_type = "Bytes32" if "Bytes<32>" in text else None
     return {
         "contract": Path(path).name,
         "ledger": ledgers[0] if ledgers else None,

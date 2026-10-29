@@ -71,3 +71,6 @@ node_modules/
 # Source archives / bundles — not committed to the tree
 *.zip
 midnight.zip
+
+# Attestation batches carry private witness data (export_attestation_batch.py)
+attestation_batch.json

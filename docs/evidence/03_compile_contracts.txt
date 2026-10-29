@@ -1,0 +1,27 @@
+$ compact compile --version && npm run compile && npm run compile:policy && ls -R build/commit/keys build/policy_attestation/keys
+# cwd: firee/midnight-side   date: 2026-10-29 11:00:46 IST   (captured verbatim)
+
+0.31.1
+
+> midnight-side@0.1.0 compile
+> compact compile contract/commit.compact build/commit
+
+Compiling 2 circuits:
+
+> midnight-side@0.1.0 compile:policy
+> compact compile ../../privacy_firewall/midnight/policy_attestation.compact build/policy_attestation
+
+Compiling 2 circuits:
+build/commit/keys:
+commit.prover
+commit.verifier
+get_latest.prover
+get_latest.verifier
+
+build/policy_attestation/keys:
+isAttested.prover
+isAttested.verifier
+recordAttestation.prover
+recordAttestation.verifier
+
+# exit code: 0

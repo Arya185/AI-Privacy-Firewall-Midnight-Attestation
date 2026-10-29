@@ -1,0 +1,23 @@
+$ <repo>/firee/midnight-side/.venv/bin/python hash_chain.py && ROOT=$(cat root_hash.txt) && SIG=$(<repo>/firee/midnight-side/.venv/bin/python sign.py sign $ROOT) && echo "signature (Ed25519, public): $SIG" && echo '--- verify original log:' && <repo>/firee/midnight-side/.venv/bin/python verify.py audit_log.jsonl $ROOT $SIG && echo '--- verify a copy with one field edited (policy P-001 -> P-999), expected FAIL:' && { <repo>/firee/midnight-side/.venv/bin/python verify.py <tmp>/tampered_copy.jsonl $ROOT $SIG; test $? -eq 1 && echo 'tamper correctly detected (verify.py exit 1)'; }
+# cwd: firee/midnight-side/audit   date: 2026-10-29 11:00:51 IST   (captured verbatim)
+
+Chained 10 records
+Root hash (this is what gets committed on-chain): f9c0d1c44cd36650c11c1dc55e0608a87625150c0fd3c2de0ccd6f8ac4961bc0
+signature (Ed25519, public): 75a78ff33a932afa9f08de5fb3a4a10888a896d6756e596dea186f6164fc0887638a24cc5ab18f3356417dcfd344094398dcef2cee6f6dd74bfd7207235c5003
+--- verify original log:
+Computed root hash: f9c0d1c44cd36650c11c1dc55e0608a87625150c0fd3c2de0ccd6f8ac4961bc0
+Expected root hash: f9c0d1c44cd36650c11c1dc55e0608a87625150c0fd3c2de0ccd6f8ac4961bc0
+Chain integrity:    PASS
+Signature check:    PASS
+
+OVERALL: PASS
+--- verify a copy with one field edited (policy P-001 -> P-999), expected FAIL:
+Computed root hash: 0bbfa171bec34c72b4fed3b3ba2bf770d6ae4090a1191b694f44ec7dd3f6f235
+Expected root hash: f9c0d1c44cd36650c11c1dc55e0608a87625150c0fd3c2de0ccd6f8ac4961bc0
+Chain integrity:    FAIL
+Signature check:    FAIL
+
+OVERALL: FAIL - tamper detected or invalid signature
+tamper correctly detected (verify.py exit 1)
+
+# exit code: 0

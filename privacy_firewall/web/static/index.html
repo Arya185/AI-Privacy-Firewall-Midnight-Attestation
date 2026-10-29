@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Privacy Firewall – Midnight Attestation</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23ff8a1f'/%3E%3Cpath d='M10 9h12v8c0 4-3 6-6 7-3-1-6-3-6-7z' fill='none' stroke='%231a0f05' stroke-width='2.5'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"><span></span></div>
+      <div>
+        <div class="brand-title">AI Privacy Firewall</div>
+        <div class="brand-sub">Midnight Attestation · local dashboard</div>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab active" role="tab" data-view="overview" aria-selected="true">Overview</button>
+      <button class="tab" role="tab" data-view="firewall" aria-selected="false">Firewall</button>
+      <button class="tab" role="tab" data-view="audit" aria-selected="false">Audit</button>
+      <button class="tab" role="tab" data-view="attestation" aria-selected="false">Attestation</button>
+    </nav>
+    <div class="conn" id="conn"><span class="dot"></span><span id="conn-text">Connecting…</span></div>
+  </header>
+
+  <div class="legend">
+    <span class="tag live">LIVE</span> this session, real backend
+    <span class="tag sample">SAMPLE</span> synthetic data or example inputs
+    <span class="tag recorded">RECORDED</span> saved verification evidence
+    <span class="tag local">LOCAL ONLY</span> nothing is sent to a blockchain
+  </div>
+
+  <main>
+    <!-- OVERVIEW -->
+    <section id="view-overview" class="view active">
+      <div class="hero glass">
+        <div>
+          <h1>Privacy rules enforced <em>outside</em> the model.</h1>
+          <p>Every request from an AI agent is checked against a fail-closed policy, minimized, inspected on the way out,
+            and recorded in a tamper-evident hash chain whose decision hashes a Midnight Compact contract can attest.</p>
+        </div>
+        <div class="hero-actions">
+          <button class="btn primary" data-goto="firewall">Try the firewall</button>
+          <button class="btn ghost" data-goto="audit">Verify the audit chain</button>
+        </div>
+      </div>
+
+      <div class="grid kpis">
+        <div class="glass kpi"><div class="kpi-head"><span>Firewall</span><span class="tag live">LIVE</span></div>
+          <div class="kpi-value" id="k-health">—</div><div class="kpi-sub" id="k-health-sub"></div></div>
+        <div class="glass kpi"><div class="kpi-head"><span>ALLOW verdicts</span><span class="tag live">LIVE</span></div>
+          <div class="kpi-value ok" id="k-allowed">—</div><div class="kpi-sub" id="k-allowed-sub"></div></div>
+        <div class="glass kpi"><div class="kpi-head"><span>DENY verdicts &amp; blocked outputs</span><span class="tag live">LIVE</span></div>
+          <div class="kpi-value bad" id="k-blocked">—</div><div class="kpi-sub" id="k-blocked-sub"></div></div>
+        <div class="glass kpi"><div class="kpi-head"><span>Audit chain</span><span class="tag live">LIVE</span></div>
+          <div class="kpi-value" id="k-chain">—</div><div class="kpi-sub" id="k-chain-sub"></div></div>
+      </div>
+
+      <div class="grid two">
+        <div class="glass card">
+          <div class="card-head"><h2>Midnight contracts</h2><span class="tag local">LOCAL ONLY</span></div>
+          <div id="o-contracts" class="stack"></div>
+        </div>
+        <div class="glass card">
+          <div class="card-head"><h2>Sample audit log</h2><span class="tag sample">SAMPLE</span></div>
+          <div id="o-sample" class="stack"></div>
+        </div>
+      </div>
+
+      <div class="glass card">
+        <div class="card-head"><h2>Recent activity</h2><span class="tag live">LIVE</span></div>
+        <ul id="o-activity" class="activity"></ul>
+      </div>
+    </section>
+
+    <!-- FIREWALL -->
+    <section id="view-firewall" class="view">
+      <div class="grid two wide-left">
+        <div class="glass card">
+          <div class="card-head"><h2>1 · Agent request</h2><span class="tag live">LIVE</span></div>
+          <p class="muted">Sent to <code>PrivacyFirewallMiddleware.safe_handle_request</code> with the policy in
+            <code id="policy-file">policies/analytics_agent.yaml</code>.</p>
+          <div class="samples" id="req-samples"><span class="tag sample">SAMPLE</span></div>
+          <form id="req-form" novalidate>
+            <div class="row">
+              <label>Agent ID<input id="f-agent" maxlength="64" autocomplete="off" value="analytics-agent"></label>
+              <label>Operation
+                <select id="f-op"><option value="read">read (raw values)</option><option value="aggregate">aggregate (statistics)</option></select>
+              </label>
+            </div>
+            <fieldset>
+              <legend>Fields</legend>
+              <div id="f-fields" class="chips"></div>
+            </fieldset>
+            <label>Query text <span class="muted small">(the agent's prompt — it cannot change policy)</span>
+              <textarea id="f-query" rows="2" maxlength="500"></textarea></label>
+            <div class="form-foot">
+              <span class="form-error" id="req-error" role="alert"></span>
+              <button class="btn primary" id="req-submit" type="submit">Send through firewall</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="glass card">
+          <div class="card-head"><h2>Policy</h2><span class="tag recorded">FILE</span></div>
+          <table class="table compact" id="policy-table"><thead><tr><th>Field</th><th>Rule</th></tr></thead><tbody></tbody></table>
+          <p class="muted small">Any field not listed is denied (fail-closed). Unknown agents get nothing.</p>
+        </div>
+      </div>
+
+      <div class="glass card result" id="req-result" hidden></div>
+
+      <div class="glass card">
+        <div class="card-head"><h2>2 · Output inspection</h2><span class="tag live">LIVE</span></div>
+        <p class="muted">Model output is checked by <code>OutputFirewall.inspect_response</code> for canary tokens and
+          unauthorized personal data before it reaches the user.</p>
+        <div class="samples" id="out-samples"><span class="tag sample">SAMPLE</span></div>
+        <form id="out-form" novalidate>
+          <label>Model output<textarea id="o-text" rows="3" maxlength="4000"></textarea></label>
+          <label>Fields the agent was allowed to see<input id="o-allowed" placeholder="e.g. department, salary" autocomplete="off"></label>
+          <div class="form-foot">
+            <span class="form-error" id="out-error" role="alert"></span>
+            <button class="btn primary" id="out-submit" type="submit">Inspect output</button>
+          </div>
+        </form>
+        <div class="result inline" id="out-result" hidden></div>
+      </div>
+    </section>
+
+    <!-- AUDIT -->
+    <section id="view-audit" class="view">
+      <div class="glass card">
+        <div class="card-head"><h2>Verify integrity</h2>
+          <div class="actions"><button class="btn primary" id="btn-verify">Verify audit chains</button></div></div>
+        <p class="muted">Recomputes every SHA-256 hash link. Any edited, reordered or deleted entry breaks the chain.
+          The sample log is also checked with an Ed25519 signature over its root hash.</p>
+        <div id="verify-result" class="grid two" hidden></div>
+      </div>
+
+      <div class="glass card">
+        <div class="card-head"><h2>Tamper-detection demo</h2><span class="tag local">COPY ONLY</span></div>
+        <p class="muted">Changes one decision in a <strong>copy</strong> (in memory for the live chain, a temporary file for the
+          sample log), then verifies the copy. The original audit data is never modified.</p>
+        <div class="row">
+          <label>Target<select id="t-target"><option value="session">Live session chain</option><option value="sample">Sample audit log</option></select></label>
+          <label>Entry index<input id="t-index" type="number" min="0" value="0"></label>
+          <div class="align-end"><button class="btn danger" id="btn-tamper">Tamper with a copy</button></div>
+        </div>
+        <span class="form-error" id="tamper-error" role="alert"></span>
+        <div id="tamper-result" class="result inline" hidden></div>
+      </div>
+
+      <div class="glass card">
+        <div class="card-head"><h2>Live session chain</h2><span class="tag live">LIVE</span></div>
+        <p class="muted small">Firewall decisions made in this dashboard session (in memory; restarting the server starts a new chain).</p>
+        <div class="table-wrap"><table class="table" id="session-table"><thead><tr>
+          <th>#</th><th>Field</th><th>Decision</th><th>Reason</th><th>Entry hash</th><th>Prev hash</th></tr></thead><tbody></tbody></table></div>
+      </div>
+
+      <div class="glass card">
+        <div class="card-head"><h2>Sample audit log</h2><span class="tag sample">SAMPLE</span></div>
+        <p class="muted small" id="sample-meta"></p>
+        <div class="table-wrap"><table class="table" id="sample-table"><thead><tr>
+          <th>#</th><th>Request</th><th>Agent</th><th>Resource</th><th>Decision</th><th>Chain hash</th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- ATTESTATION -->
+    <section id="view-attestation" class="view">
+      <div class="banner">
+        <strong>Local simulation, not blockchain deployment.</strong>
+        The contracts are compiled and executed with the Compact runtime on this machine. No wallet, DUST registration,
+        deployment or on-chain commitment is available from this dashboard, and no contract has been deployed.
+      </div>
+
+      <div class="glass card">
+        <div class="card-head"><h2>From decision to attestation</h2></div>
+        <ol class="pipeline">
+          <li><span>1</span><b>Firewall decision</b><small>policy verdict per field</small></li>
+          <li><span>2</span><b>Audit chain</b><small>SHA-256, tamper-evident</small></li>
+          <li><span>3</span><b>Bytes32 hash</b><small>agent, field, decision, reason, time</small></li>
+          <li><span>4</span><b>recordAttestation</b><small>only the hash goes on the ledger</small></li>
+          <li><span>5</span><b>isAttested</b><small>anyone can check a hash</small></li>
+        </ol>
+      </div>
+
+      <div class="grid two" id="contracts"></div>
+
+      <div class="glass card">
+        <div class="card-head"><h2>Attest this session's decisions</h2><span class="tag live">LIVE</span><span class="tag local">LOCAL ONLY</span></div>
+        <p class="muted">Exports the live decisions as Bytes32 hashes (<code>MidnightBridge</code>) and runs
+          <code>npm run simulate</code>, which records them with <code>recordAttestation</code> in the compiled contract and
+          checks <code>isAttested</code>. Private details (agent, fields, reason) stay on this machine.</p>
+        <div class="actions">
+          <button class="btn ghost" id="btn-export">Export decision hashes</button>
+          <button class="btn primary" id="btn-simulate">Run local contract simulation</button>
+        </div>
+        <span class="form-error" id="att-error" role="alert"></span>
+        <div id="att-result" class="result inline" hidden></div>
+      </div>
+
+      <div class="glass card">
+        <div class="card-head"><h2>Recorded verification</h2><span class="tag recorded">RECORDED</span></div>
+        <div id="recorded-sim"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    Runs on <code>127.0.0.1</code> only · data shown is from this machine ·
+    <button class="link" id="btn-reset">Reset live session</button>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

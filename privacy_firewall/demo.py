@@ -250,7 +250,7 @@ def scenario_5(ctx: Context) -> None:
     row("State commitment", commitment, "bold")
     print()
     note("midnight/policy_attestation.compact:")
-    note('  recordAttestation(decisionHash: Opaque<"Bytes32">)')
+    note('  recordAttestation(decisionHash: Bytes<32>)')
     note(f"  commitment above is the Bytes32 key; {len(entries)} decisions attested,")
     note("  agent / field / salary values never leave the client")
     verdict(intact, "AUDIT EXPORTED - SHA-256 commitment ready for on-chain attestation")

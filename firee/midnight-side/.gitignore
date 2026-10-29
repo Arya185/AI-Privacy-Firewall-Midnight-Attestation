@@ -5,3 +5,5 @@ seed.txt
 audit/audit_log.jsonl
 audit/audit_chain.jsonl
 audit/root_hash.txt
+wallet-state.json
+wallet-state.json.*

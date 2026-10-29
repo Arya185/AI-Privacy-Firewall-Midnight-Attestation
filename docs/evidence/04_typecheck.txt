@@ -1,0 +1,8 @@
+$ npm run typecheck
+# cwd: firee/midnight-side   date: 2026-10-29 11:00:49 IST   (captured verbatim)
+
+
+> midnight-side@0.1.0 typecheck
+> tsc --noEmit
+
+# exit code: 0

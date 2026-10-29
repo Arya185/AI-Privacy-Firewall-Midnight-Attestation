@@ -22,6 +22,18 @@ Modern AI agents are handed broad access to data they only partially need. The u
 
 Self-contained library + a runnable 5-scenario CLI demo + a **234-test** suite. No external LLM call — a `FakeLLM` stub stands in for the model, so firewall behaviour is fully deterministic and offline.
 
+### Project status at a glance
+
+| Layer | Status | How it is verified |
+| --- | --- | --- |
+| Python firewall (policy engine, minimizer, output firewall, audit chain, Midnight bridge) | **Working** | 234/234 tests; 5/5 demo scenarios |
+| Compact contracts (`policy_attestation.compact`, `commit.compact`) | **Compiled** with the real Compact toolchain 0.31.1 (language 0.23.0, runtime 0.16.0) | `npm run compile`, `npm run compile:policy` |
+| Contract logic | **Executed locally** with the Compact runtime: real firewall decision hashes are recorded and read back | `npm run simulate` (6/6 checks) |
+| Audit hash chain + Ed25519 signature | **Working** offline; tampering detected | `audit/verify.py` PASS on the log, FAIL on an edited copy |
+| Live Midnight Preview deployment | **Optional, not done.** Wallet tooling is built and a Preview wallet was funded and synced, but **no contract has been deployed and no transaction has been submitted** | — |
+
+Captured terminal output for every check is in [`docs/evidence/`](docs/evidence/). Submission checklist: [`SUBMISSION.md`](SUBMISSION.md).
+
 ---
 
 ## 🎯 Problem
@@ -226,12 +238,12 @@ flowchart LR
 
 Built around **Midnight's selective-disclosure model** — commit a value on-chain while its inputs stay private.
 
-- **`privacy_firewall/midnight/policy_attestation.compact`** — `pragma language_version 0.23`; `attested: Map<Opaque<"Bytes32">, Boolean>`; circuits `recordAttestation(decisionHash)` / `isAttested(decisionHash)`. `disclose()` marks only the decision hash public. Parsed and asserted by `test_midnight_bridge.py`.
-- **`firee/midnight-side/contract/commit.compact`** — a second, standalone contract (`pragma language_version 0.26.0`): `latestHash: Bytes<32>` + `commitCount: Counter`, circuits `commit(newHash)` / `get_latest()`. Notarizes an audit-chain root hash.
+- **`privacy_firewall/midnight/policy_attestation.compact`** — `pragma language_version 0.23`; `attested: Map<Bytes<32>, Boolean>`; circuits `recordAttestation(decisionHash)` / `isAttested(decisionHash)`. `disclose()` marks only the decision hash public. Parsed and asserted by `test_midnight_bridge.py`.
+- **`firee/midnight-side/contract/commit.compact`** — a second, standalone contract (`pragma language_version 0.23.0`): `latestHash: Bytes<32>` + `commitCount: Counter`, circuits `commit(newHash)` / `get_latest()`. Notarizes an audit-chain root hash.
 - **`midnight_bridge.py`** produces exactly what the attestation circuit consumes: a `Bytes32` hash of `agent | field | decision | reason | timestamp` (length-framed). Agent identity, field names, and values stay in the **private** side of `generate_zk_witness()` and never reach the chain.
 - **Privacy property:** an auditor can verify *that a policy decision was made and recorded* without ever seeing *what data it concerned*.
 
-> **Honesty note.** The contracts are written and their interfaces are schema-verified by tests, but they have **not** been compiled with the real Compact compiler or deployed to a Midnight network. Batch integrity currently uses an HMAC-SHA256 signature, not a real zero-knowledge proof.
+> **Honesty note.** Both contracts compile with the real Compact toolchain (0.31.1, the version in Midnight's support matrix), producing ZK prover/verifier keys for every circuit, and their logic runs correctly in a local Compact-runtime simulation fed with real firewall decision hashes (`npm run simulate`). They have **not** been deployed to a Midnight network, and no on-chain transaction has been submitted. Off-chain, batch integrity uses an HMAC-SHA256 signature, not a zero-knowledge proof.
 
 ---
 
@@ -243,7 +255,7 @@ Built around **Midnight's selective-disclosure model** — commit a value on-cha
 | Runtime dependency | `PyYAML` (policy parsing) — `pyyaml>=6.0,<7.0` |
 | Testing | `pytest>=8.0,<10.0` (234 tests); `pytest.ini` `pythonpath` config |
 | CI | GitHub Actions — matrix Python 3.10 / 3.11 / 3.12, runs suite + demo |
-| Blockchain / Web3 | Midnight **Compact** contracts (`.compact` source; schema-verified, not deployed). `firee/midnight-side/` carries a TypeScript deploy/commit pipeline (`@midnight-ntwrk/*` SDK). |
+| Blockchain / Web3 | Midnight **Compact** contracts — compiled with Compact 0.31.1 and simulated locally, not deployed. `firee/midnight-side/` carries a TypeScript pipeline (Node.js 22, `@midnight-ntwrk/*` SDK: Midnight.js 4.1.1, compact-runtime 0.16.0) for wallet, DUST registration, deploy and commit. |
 | AI/ML | None. Deterministic regex + Luhn + Shannon entropy; the model is a `FakeLLM` stub. |
 | Frontend / API / DB | None. Library + CLI; data source is an in-memory mock. |
 
@@ -263,6 +275,7 @@ AI-Privacy-Firewall/
 │   ├── requirements.txt                   pyyaml>=6.0,<7.0 · pytest>=8.0,<10.0
 │   ├── pytest.ini                         pythonpath = .  /  testpaths = tests
 │   ├── demo.py                            interactive 5-scenario CLI demo
+│   ├── export_attestation_batch.py        offline run → signed batch of Bytes32 decision hashes
 │   │
 │   ├── privacy_firewall/                  core package
 │   │   ├── __init__.py                    public API re-exports
@@ -277,7 +290,7 @@ AI-Privacy-Firewall/
 │   │   └── midnight_bridge.py             SecurityDecision → 5-field Bytes32 hash + zk witness + signed batch
 │   │
 │   ├── policies/analytics_agent.yaml      per-agent field permissions
-│   ├── midnight/policy_attestation.compact   Compact contract (pragma 0.23) — recordAttestation / isAttested
+│   ├── midnight/policy_attestation.compact   Compact contract (pragma 0.23, compiles) — recordAttestation / isAttested
 │   └── tests/                             234 tests
 │       ├── test_agent.py                  (35)   test_audit.py            (4)
 │       ├── test_data_minimizer.py         (14)   test_midnight_bridge.py  (33)
@@ -287,7 +300,7 @@ AI-Privacy-Firewall/
 └── firee/midnight-side/                   Midnight blockchain / crypto module (standalone)
     ├── README.md · package.json · package-lock.json · tsconfig.json · requirements.txt · .gitignore
     ├── contract/
-    │   ├── commit.compact                 Compact contract (pragma 0.26.0) — commit / get_latest
+    │   ├── commit.compact                 Compact contract (pragma 0.23.0, compiles) — commit / get_latest
     │   └── README.md
     ├── audit/                             standalone Python audit + crypto utilities
     │   ├── fake_audit_generator.py        synthetic JSONL audit log
@@ -295,9 +308,14 @@ AI-Privacy-Firewall/
     │   ├── sign.py                        Ed25519 keygen / sign / verify (needs `cryptography`)
     │   └── verify.py                      recompute chain + check signature → PASS/FAIL
     ├── docs/fallback_demo.md              offline demo path (no live testnet)
-    └── scripts/                           TypeScript (tsx) deploy / commit pipeline
-        ├── generate_wallet.ts · providers.ts · deploy_contract.ts
-        ├── commit_to_chain.ts · run_pipeline.ts
+    └── scripts/                           TypeScript (tsx)
+        ├── simulate_contract.ts           offline contract execution (no network)
+        ├── providers.ts                   wallet sync, persisted state, Midnight providers
+        ├── generate_wallet.ts · sync_wallet.ts · register_dust.ts · estimate_deploy_fee.ts
+        ├── deploy_contract.ts · commit_to_chain.ts · run_pipeline.ts
+
+docs/evidence/                             captured terminal output of every verification run
+SUBMISSION.md                              submission checklist, architecture, results, limitations
 ```
 
 ### Example policy — `privacy_firewall/policies/analytics_agent.yaml`
@@ -321,8 +339,8 @@ Any field **not** listed (e.g. `employee.ssn`) also resolves to `DENY` — the e
 ## ⚙️ Installation
 
 ```bash
-git clone https://github.com/Arya185/New_Repo1.git
-cd New_Repo1/privacy_firewall           # the Python firewall lives in this subdirectory
+git clone https://github.com/Arya185/AI-Privacy-Firewall-Midnight-Attestation.git
+cd AI-Privacy-Firewall-Midnight-Attestation/privacy_firewall   # the Python firewall lives here
 
 python -m venv .venv
 source .venv/bin/activate               # Windows: .venv\Scripts\activate
@@ -332,7 +350,15 @@ pip install -r requirements.txt         # PyYAML, pytest
 
 No database, services, or build step. Run all commands below from `privacy_firewall/`.
 
-The `firee/midnight-side/` module is optional and standalone: `cd firee/midnight-side && npm install` for the TypeScript pipeline; `pip install -r firee/midnight-side/requirements.txt` (`cryptography`) for `audit/sign.py` / `audit/verify.py`.
+The `firee/midnight-side/` module is optional and standalone (full steps in its [README](firee/midnight-side/README.md)):
+
+```bash
+cd firee/midnight-side
+npm ci                                   # Node.js 22; installs the pinned Midnight SDK from the lockfile
+compact update 0.31.1                    # Compact toolchain from Midnight's support matrix
+npm run compile && npm run compile:policy
+python -m venv .venv && .venv/bin/pip install -r requirements.txt   # `cryptography` for audit/sign.py, verify.py
+```
 
 ---
 
@@ -355,6 +381,16 @@ python demo.py                       # paced — press [enter] between scenarios
 python demo.py --no-pause            # run straight through
 python demo.py --no-color            # plain ASCII (logs / screenshots)
 ```
+
+### Run the web dashboard
+
+```bash
+python -m web.server                 # http://127.0.0.1:8765 (localhost only)
+```
+
+A presentation UI over the same code: live firewall requests, output inspection, audit verification with a
+tamper demo on a copy, and local contract simulation. Details and a presenter walkthrough:
+[`privacy_firewall/web/README.md`](privacy_firewall/web/README.md).
 
 ### Use as a library
 
@@ -396,9 +432,21 @@ flake8 --select=E9,F63,F7,F82 .
 
 Expected telemetry:
 
-- `pytest` → `====== 234 passed ======`, **0** failed / errors / skipped / xfail / warnings, ~0.2 s. Also runnable from repo root (`pytest`) via the root `pytest.ini`, or `python -m pytest`.
+- `pytest` → `====== 234 passed ======`, **0** failed / errors / skipped / xfail / warnings, well under a second. Also runnable from repo root (`pytest`) via the root `pytest.ini`, or `python -m pytest`.
 - `demo.py --no-pause --no-color` → exit `0`, all 5 scenarios `PASS`, explicit `verify_chain()       PASSED`.
-- `flake8 --select=E9,F63,F7,F82 .` → `0`, exit `0` (no syntax errors, invalid asserts, or undefined names).
+- `flake8 --select=E9,F63,F7,F82 .` → optional lint; `flake8` is not in `requirements.txt` and was not part of the verification captured in `docs/evidence/`.
+
+Blockchain-side checks (from `firee/midnight-side/`, offline — no network, wallet, or transaction):
+
+```bash
+npm run compile && npm run compile:policy      # both Compact contracts → build/
+npm run typecheck                              # TypeScript pipeline
+(cd ../../privacy_firewall && PYTHONPATH=. python export_attestation_batch.py \
+    ../firee/midnight-side/build/attestation_batch.json)   # real firewall decision hashes
+npm run simulate                               # execute both contracts locally: 6/6 checks
+```
+
+Verified results (captured verbatim in [`docs/evidence/`](docs/evidence/)): 234/234 tests, 5/5 demo scenarios, both contracts compiled (2 circuits each, prover/verifier keys), typecheck clean, 6/6 simulation checks, audit signature PASS on the original log and FAIL on a tampered copy.
 
 | Suite | Cases | Focus |
 | --- | ---: | --- |
@@ -418,13 +466,13 @@ Expected telemetry:
 
 - **CI** — `.github/workflows/ci.yml` runs the suite + demo on Python 3.10 / 3.11 / 3.12 for every push and PR to `main`.
 - **No app deployment.** Library + CLI — no Dockerfile, no Vercel/Render config, no server.
-- **Contracts not deployed.** `policy_attestation.compact` / `commit.compact` are schema-verified only. Compiling with the real Compact compiler and wiring `export_audit_batch()` into a live `recordAttestation` call is the top roadmap item; `firee/midnight-side/scripts/` is the intended pipeline.
+- **Contracts compiled and simulated, not deployed.** `policy_attestation.compact` and `commit.compact` compile with Compact 0.31.1 and pass local simulation. Live deployment to Midnight Preview is optional and **has not been done**: a Preview wallet was generated, funded from the faucet and fully synced, and the DUST-registration dry run builds a valid transaction, but no DUST registration, deployment, or commit transaction has been submitted. Steps to finish are in [`firee/midnight-side/README.md`](firee/midnight-side/README.md).
 
 ---
 
 ## 📸 Demo — 5 scenarios
 
-No screenshots are committed; the demo is terminal output. Run `python demo.py --no-pause`.
+The demo is terminal output; no image screenshots are committed. A verbatim capture is in [`docs/evidence/02_demo.txt`](docs/evidence/02_demo.txt), or run `python demo.py --no-pause`.
 
 | # | Scenario | What it proves | Outcome |
 | --- | --- | --- | --- |
@@ -460,7 +508,7 @@ Trimmed output:
 - **Zero-knowledge-shaped audit.** The artifact proving a decision happened contains none of the data it concerned — only a deterministic, tamper-evident `Bytes32` commitment.
 - **Quantified privacy.** Aggregates release `{count, sum, avg}` only, with a `k`-anonymity floor; no raw extrema, no small-group scalar attribution.
 - **Deterministic & offline.** No ML weights, no network, no external API — which is what makes a 234-test suite meaningful.
-- **Honest scope.** README and contract headers both state what is *not* proven (third-party model behaviour) and *not* built (on-chain deployment, a real ZK circuit).
+- **Honest scope.** README and contract headers both state what is *not* proven (third-party model behaviour) and *not* done (on-chain deployment; a ZK proof for the off-chain batch, which is HMAC-signed).
 
 ---
 
@@ -468,7 +516,7 @@ Trimmed output:
 
 Not yet implemented:
 
-- Compile the `.compact` contracts with the real Compact compiler; deploy to a Midnight network; call `recordAttestation` / `isAttested` for real from the batch exporter, with a verifier UI.
+- Deploy the (already compiled and simulated) contracts to Midnight Preview: register the funded wallet's tNIGHT for DUST, deploy, then call `recordAttestation` / `commit` from the batch exporter, with a verifier UI.
 - Replace the HMAC-SHA256 batch signature with an actual zero-knowledge proving circuit.
 - Optional high-recall PII backend (Presidio / transformer NER) behind the existing `PIIDetector` interface.
 - Streaming outbound inspection — scan tokens as they stream, not only the final response.

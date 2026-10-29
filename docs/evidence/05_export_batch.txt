@@ -1,0 +1,6 @@
+$ PYTHONPATH=. .venv/bin/python export_attestation_batch.py ../firee/midnight-side/build/attestation_batch.json
+# cwd: privacy_firewall   date: 2026-10-29 11:00:50 IST   (captured verbatim)
+
+4 decision hashes -> ../firee/midnight-side/build/attestation_batch.json
+
+# exit code: 0

@@ -1,0 +1,19 @@
+$ npm run simulate
+# cwd: firee/midnight-side   date: 2026-10-29 11:00:50 IST   (captured verbatim)
+
+
+> midnight-side@0.1.0 simulate
+> tsx scripts/simulate_contract.ts
+
+commit.compact
+  PASS  fresh contract: commitCount = 0
+  PASS  get_latest() == audit/root_hash.txt (f9c0d1c44cd36650...)
+  PASS  commitCount = 1 after commit
+policy_attestation.compact
+  PASS  isAttested() true for all 4 firewall decision hashes
+  PASS  ledger holds exactly those hashes
+  PASS  isAttested() false for an unrecorded hash
+
+Simulation: all checks passed
+
+# exit code: 0
